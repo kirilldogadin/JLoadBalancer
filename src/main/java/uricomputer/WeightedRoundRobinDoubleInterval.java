@@ -12,15 +12,14 @@ import static java.util.Arrays.asList;
 
 /**
  * Вычисляет uri согласно приориетам весов
+ * точность до разрядности Double
  */
-public class WeightedRoundRobinDummy implements UriComputer {
+public class WeightedRoundRobinDoubleInterval implements UriComputer{
     private final Map<Weight, List<ServerDetails>> serversByWeight;
     private final ThreadLocalRandom random;
     private final List<Weight> weights;
     private final double sumOfWeights;
     private final Weight maxWeight;
-    private final List<ServerDetails> serverDetailsList;
-    private final int weightСoefficient;
 
     public static void main(String[] args) throws URISyntaxException {
         URI server1Uri = new URI("0.0.0.1");
@@ -58,11 +57,11 @@ public class WeightedRoundRobinDummy implements UriComputer {
         int server9Count = 0;
         int server10Count = 0;
 
-        WeightedRoundRobinDummy weightedRoundRobin = new WeightedRoundRobinDummy(serverDetails);
+        WeightedRoundRobinDoubleInterval weightedRoundRobinDoubleInterval = new WeightedRoundRobinDoubleInterval(serverDetails);
 
         //тест
         for (; commonCount < 1_000_000; commonCount++) {
-            ServerDetails nextServer = weightedRoundRobin.getNextServer();
+            ServerDetails nextServer = weightedRoundRobinDoubleInterval.getNextServer();
             if (nextServer.address.equals(server1Uri))
                 server1Count++;
             if (nextServer.address.equals(server2Uri))
@@ -100,8 +99,9 @@ public class WeightedRoundRobinDummy implements UriComputer {
 
     public ServerDetails getNextServer() {
         //1.Рендомное число (равновероятное) где верхнее значение округлено до суммы весов(например 16)
-        int randNumb = random.nextInt(((serverDetailsList.size())));
-        return serverDetailsList.get(randNumb);
+        double randNumb = random.nextDouble((sumOfWeights));
+        Weight nearWeight = nearWeight(randNumb, weights, maxWeight);
+        return extractWeight(nearWeight, randNumb);
     }
 
     /**
@@ -111,7 +111,7 @@ public class WeightedRoundRobinDummy implements UriComputer {
      * @param random случайно сгенерированное число
      * @return любое из значений
      */
-    private ServerDetails extractWeight(Weight weight, int random) {
+    private ServerDetails extractWeight(Weight weight, double random) {
         List<ServerDetails> serverDetailsList = serversByWeight.get(weight);
         if (serverDetailsList.size() == 1) {
             return serverDetailsList.get(0);
@@ -123,7 +123,7 @@ public class WeightedRoundRobinDummy implements UriComputer {
         return getNextServer().address;
     }
 
-    public WeightedRoundRobinDummy(List<ServerDetails> serverDetailsList) {
+    public WeightedRoundRobinDoubleInterval(List<ServerDetails> serverDetailsList) {
         random = ThreadLocalRandom.current(); //для генерации числа в нужно диапазоне
         serversByWeight = new HashMap<>();
         weights = new ArrayList<>();
@@ -143,8 +143,6 @@ public class WeightedRoundRobinDummy implements UriComputer {
         weights.sort(Weight::compareTo);
         maxWeight = weights.get(weights.size() - 1);
         sumOfWeights = computeSumOfWeights(weights);
-        weightСoefficient = computeСoefficient(maxWeight);
-        this.serverDetailsList = initList(serverDetailsList);
     }
 
     private double computeSumOfWeights(List<Weight> weights) {
@@ -155,55 +153,33 @@ public class WeightedRoundRobinDummy implements UriComputer {
         return sum;
     }
 
-
-    private List<ServerDetails> initList(List<ServerDetails> serverDetailsListIn) {
-        List<ServerDetails> serverDetailsOut = new ArrayList<>();
-        int genGcd = 1;
-        //region оптмимизация кол-ва записией
-//        for (int i = 0; i < serverDetailsListIn.size() - 2; i++) { // ищем общий множитель
-//            int curGcd = gcd(serverDetailsListIn.get(i).weight.value.intValue(),
-//                    serverDetailsListIn.get(i + 1).weight.value.intValue());
-//            if (curGcd > genGcd)
-//                genGcd = curGcd;
-//        }
-
-//        if (genGcd > 1){ // если есть общий множитель
-//            serverDetailsOut = serverDetailsOut.stream()
-//                    .map(serverDetails ->  new ServerDetails(
-//                            new Weight(serverDetails.weight.value / genGcd),
-//                            serverDetails.address))
-//                    .collect(Collectors.toList());
-//        }
-        //endregion
-
-        //заполняем массив
-        for (int i = 0; i < serverDetailsListIn.size(); i++) {
-
-            int addressValueCount = serverDetailsListIn.get(i).weight.value.intValue() * weightСoefficient;
-
-            for (int j = 0; j < addressValueCount; j++) {
-                serverDetailsOut.add(serverDetailsListIn.get(i));
+    /**
+     * Вернет вес для случайного числа
+     *
+     * @param random    должен быть от 0 до sum весов
+     * @param weights   упорядочен от меньшего к большему!
+     * @param maxWeight макс вес
+     * @return вероятный вес согласно весам
+     */
+    private Weight nearWeight(double random, List<Weight> weights, Weight maxWeight) {
+        checkRandomArg(random);
+        double sum = 0; // сумма длин предыдущих отрезков вместе с текущим - конец текущего
+        for (int i = 0; i < weights.size()-1; i++) {
+            sum += weights.get(i).value;
+            if (random < (sum)) {
+                return weights.get(i);
             }
         }
-        return serverDetailsOut;
+        return maxWeight;
     }
 
-    private int computeСoefficient(Weight maxWeight) {
-        return 1;
-    }
-
-    static int gcd(int a, int b) {
-        if (a == 0 || b == 0) {
-            return a + b; // base case
-        }
-        return gcd(b, a % b);
-    }
-
-    private void checkRandomArg(int random) {
+    private void checkRandomArg(double random) {
         if (random > sumOfWeights && random < 0)
             throw new IllegalArgumentException("random number must be less " +
                     "them sum Of All weights and More then 0");
     }
+
+
 
 
 }

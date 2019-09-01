@@ -9,29 +9,31 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static java.util.Arrays.asList;
-import static java.util.Objects.hash;
 
 /**
  * Вычисляет uri согласно приориетам весов
+ * точность округлена из-за реализации на основе массива
  */
-public class WeightedRoundRobin implements UriComputer{
+public class WeightedRoundRobinArray implements UriComputer {
     private final Map<Weight, List<ServerDetails>> serversByWeight;
     private final ThreadLocalRandom random;
     private final List<Weight> weights;
     private final double sumOfWeights;
     private final Weight maxWeight;
+    private final List<ServerDetails> serverDetailsList;
+    private final int weightСoefficient;
 
     public static void main(String[] args) throws URISyntaxException {
         URI server1Uri = new URI("0.0.0.1");
         URI server2Uri = new URI("0.0.0.2");
-        URI server3Uri = new URI("0.0.0.2");
-        URI server4Uri = new URI("0.0.0.3");
-        URI server5Uri = new URI("0.0.0.3");
-        URI server6Uri = new URI("0.0.0.3");
-        URI server7Uri = new URI("0.0.0.3");
-        URI server8Uri = new URI("0.0.0.3");
-        URI server9Uri = new URI("0.0.0.3");
-        URI server10Uri = new URI("0.0.0.3");
+        URI server3Uri = new URI("0.0.0.3");
+        URI server4Uri = new URI("0.0.0.4");
+        URI server5Uri = new URI("0.0.0.5");
+        URI server6Uri = new URI("0.0.0.6");
+        URI server7Uri = new URI("0.0.0.7");
+        URI server8Uri = new URI("0.0.0.8");
+        URI server9Uri = new URI("0.0.0.9");
+        URI server10Uri = new URI("0.0.0.10");
         List<ServerDetails> serverDetails = asList(
                 new ServerDetails(new Weight(1.0), server1Uri)
                 , new ServerDetails(new Weight(2.0), server2Uri)
@@ -57,7 +59,7 @@ public class WeightedRoundRobin implements UriComputer{
         int server9Count = 0;
         int server10Count = 0;
 
-        WeightedRoundRobin weightedRoundRobin = new WeightedRoundRobin(serverDetails);
+        WeightedRoundRobinArray weightedRoundRobin = new WeightedRoundRobinArray(serverDetails);
 
         //тест
         for (; commonCount < 1_000_000; commonCount++) {
@@ -99,9 +101,8 @@ public class WeightedRoundRobin implements UriComputer{
 
     public ServerDetails getNextServer() {
         //1.Рендомное число (равновероятное) где верхнее значение округлено до суммы весов(например 16)
-        int randNumb = random.nextInt(Math.toIntExact(Math.round(sumOfWeights)));
-        Weight nearWeight = nearWeight(randNumb, weights, maxWeight);
-        return extractWeight(nearWeight, randNumb);
+        int randNumb = random.nextInt(((serverDetailsList.size())));
+        return serverDetailsList.get(randNumb);
     }
 
     /**
@@ -123,7 +124,7 @@ public class WeightedRoundRobin implements UriComputer{
         return getNextServer().address;
     }
 
-    public WeightedRoundRobin(List<ServerDetails> serverDetailsList) {
+    public WeightedRoundRobinArray(List<ServerDetails> serverDetailsList) {
         random = ThreadLocalRandom.current(); //для генерации числа в нужно диапазоне
         serversByWeight = new HashMap<>();
         weights = new ArrayList<>();
@@ -143,6 +144,8 @@ public class WeightedRoundRobin implements UriComputer{
         weights.sort(Weight::compareTo);
         maxWeight = weights.get(weights.size() - 1);
         sumOfWeights = computeSumOfWeights(weights);
+        weightСoefficient = computeСoefficient(maxWeight);
+        this.serverDetailsList = initList(serverDetailsList);
     }
 
     private double computeSumOfWeights(List<Weight> weights) {
@@ -153,23 +156,50 @@ public class WeightedRoundRobin implements UriComputer{
         return sum;
     }
 
-    /**
-     * Вернет вес для случайного числа
-     *
-     * @param random    должен быть от 0 до sum весов
-     * @param weights   упорядочен от меньшего к большему!
-     * @param maxWeight макс вес
-     * @return вероятный вес согласно весам
-     */
-    private Weight nearWeight(int random, List<Weight> weights, Weight maxWeight) {
-        checkRandomArg(random);
-
-        for (Weight weight : weights) {
-            if (weight.value > random) {
-                return weight;
+    private List<ServerDetails> initList(List<ServerDetails> serverDetailsListIn) {
+        List<ServerDetails> serverDetailsOut = new ArrayList<>();
+        int genGcd = 1;
+        optimizeValueCount(serverDetailsListIn);
+        //заполняем массив
+        for (ServerDetails serverDetails : serverDetailsListIn) {
+            int addressValueCount = serverDetails.weight.value.intValue() * weightСoefficient;
+            for (int j = 0; j < addressValueCount; j++) {
+                serverDetailsOut.add(serverDetails);
             }
         }
-        return maxWeight;
+        return serverDetailsOut;
+    }
+
+    /**
+     * оптмимизация кол-ва записией (общий множитель весов)
+     * @param serverDetailsListIn
+     */
+    private void optimizeValueCount(List<ServerDetails> serverDetailsListIn){
+//        for (int i = 0; i < serverDetailsListIn.size() - 2; i++) { // ищем общий множитель
+//            int curGcd = gcd(serverDetailsListIn.get(i).weight.value.intValue(),
+//                    serverDetailsListIn.get(i + 1).weight.value.intValue());
+//            if (curGcd > genGcd)
+//                genGcd = curGcd;
+//        }
+
+//        if (genGcd > 1){ // если есть общий множитель
+//            serverDetailsOut = serverDetailsOut.stream()
+//                    .map(serverDetails ->  new ServerDetails(
+//                            new Weight(serverDetails.weight.value / genGcd),
+//                            serverDetails.address))
+//                    .collect(Collectors.toList());
+//        }
+    }
+
+    private int computeСoefficient(Weight maxWeight) {
+        return 1;
+    }
+
+    static int gcd(int a, int b) {
+        if (a == 0 || b == 0) {
+            return a + b; // base case
+        }
+        return gcd(b, a % b);
     }
 
     private void checkRandomArg(int random) {
@@ -177,8 +207,6 @@ public class WeightedRoundRobin implements UriComputer{
             throw new IllegalArgumentException("random number must be less " +
                     "them sum Of All weights and More then 0");
     }
-
-
 
 
 }

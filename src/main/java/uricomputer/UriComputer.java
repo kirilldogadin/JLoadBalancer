@@ -11,10 +11,10 @@ public interface UriComputer {
     ServerDetails getNextServer();
 
     class ServerDetails {
-        final WeightedRoundRobin.Weight weight;
+        final Weight weight;
         final URI address;
 
-        public ServerDetails(WeightedRoundRobin.Weight weight, URI address) {
+        public ServerDetails(Weight weight, URI address) {
             this.weight = weight;
             this.address = address;
         }
@@ -31,7 +31,7 @@ public interface UriComputer {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            WeightedRoundRobin.ServerDetails that = (WeightedRoundRobin.ServerDetails) o;
+            WeightedRoundRobinDoubleInterval.ServerDetails that = (WeightedRoundRobinDoubleInterval.ServerDetails) o;
             return weight.equals(that.weight) &&
                     address.equals(that.address);
         }
