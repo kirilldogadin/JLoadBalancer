@@ -20,6 +20,7 @@ public class WeightedRoundRobinDummy implements UriComputer {
     private final double sumOfWeights;
     private final Weight maxWeight;
     private final List<ServerDetails> serverDetailsList;
+    private final int weightСoefficient;
 
     public static void main(String[] args) throws URISyntaxException {
         URI server1Uri = new URI("0.0.0.1");
@@ -42,7 +43,7 @@ public class WeightedRoundRobinDummy implements UriComputer {
                 , new ServerDetails(new Weight(7.0), server7Uri)
                 , new ServerDetails(new Weight(8.0), server8Uri)
                 , new ServerDetails(new Weight(9.0), server9Uri)
-                , new ServerDetails(new Weight(10.0), server10Uri)
+                , new ServerDetails(new Weight(101.0), server10Uri)
         );
 
         int commonCount = 0;
@@ -142,7 +143,8 @@ public class WeightedRoundRobinDummy implements UriComputer {
         weights.sort(Weight::compareTo);
         maxWeight = weights.get(weights.size() - 1);
         sumOfWeights = computeSumOfWeights(weights);
-        this.serverDetailsList = initList(serverDetailsList,Double.valueOf(sumOfWeights).intValue());
+        weightСoefficient = computeСoefficient(maxWeight);
+        this.serverDetailsList = initList(serverDetailsList);
     }
 
     private double computeSumOfWeights(List<Weight> weights) {
@@ -153,27 +155,8 @@ public class WeightedRoundRobinDummy implements UriComputer {
         return sum;
     }
 
-    /**
-     * Вернет вес для случайного числа
-     *
-     * @param random    должен быть от 0 до sum весов
-     * @param weights   упорядочен от меньшего к большему!
-     * @param maxWeight макс вес
-     * @return вероятный вес согласно весам
-     */
-    private Weight nearWeight(int random, List<Weight> weights, Weight maxWeight) {
-        checkRandomArg(random);
 
-        for (Weight weight : weights) {
-            if (weight.value > random) {
-                return weight;
-            }
-        }
-        return maxWeight;
-    }
-
-
-    private List<ServerDetails> initList(List<ServerDetails> serverDetailsListIn, int sumWeights) {
+    private List<ServerDetails> initList(List<ServerDetails> serverDetailsListIn) {
         List<ServerDetails> serverDetailsOut = new ArrayList<>();
         int genGcd = 1;
         //region оптмимизация кол-ва записией
@@ -195,7 +178,9 @@ public class WeightedRoundRobinDummy implements UriComputer {
 
         //заполняем массив
         for (int i = 0; i < serverDetailsListIn.size();i++ ) {
-            int addressValueCount = serverDetailsListIn.get(i).weight.value.intValue();
+
+            int addressValueCount = serverDetailsListIn.get(i).weight.value.intValue()*weightСoefficient;
+
             for (int j = 0; j < addressValueCount; j++) {
                 serverDetailsOut.add(serverDetailsListIn.get(i));
             }
@@ -204,8 +189,16 @@ public class WeightedRoundRobinDummy implements UriComputer {
     return serverDetailsOut;
     }
 
+    private int computeСoefficient(Weight maxWeight){
+        if (maxWeight.value < 100)
+            return 10;
+        else return 1;
+    }
+
     static int gcd(int a, int b) {
-        if (a == 0 || b == 0) return a + b; // base case
+        if (a == 0 || b == 0) {
+            return a + b; // base case
+        }
         return gcd(b, a % b);
     }
 
