@@ -43,7 +43,7 @@ public class WeightedRoundRobinDummy implements UriComputer {
                 , new ServerDetails(new Weight(7.0), server7Uri)
                 , new ServerDetails(new Weight(8.0), server8Uri)
                 , new ServerDetails(new Weight(9.0), server9Uri)
-                , new ServerDetails(new Weight(101.0), server10Uri)
+                , new ServerDetails(new Weight(10.0), server10Uri)
         );
 
         int commonCount = 0;
@@ -100,7 +100,7 @@ public class WeightedRoundRobinDummy implements UriComputer {
 
     public ServerDetails getNextServer() {
         //1.Рендомное число (равновероятное) где верхнее значение округлено до суммы весов(например 16)
-        int randNumb = random.nextInt(((serverDetailsList.size()-1)));
+        int randNumb = random.nextInt(((serverDetailsList.size())));
         return serverDetailsList.get(randNumb);
     }
 
@@ -177,22 +177,19 @@ public class WeightedRoundRobinDummy implements UriComputer {
         //endregion
 
         //заполняем массив
-        for (int i = 0; i < serverDetailsListIn.size();i++ ) {
+        for (int i = 0; i < serverDetailsListIn.size(); i++) {
 
-            int addressValueCount = serverDetailsListIn.get(i).weight.value.intValue()*weightСoefficient;
+            int addressValueCount = serverDetailsListIn.get(i).weight.value.intValue() * weightСoefficient;
 
             for (int j = 0; j < addressValueCount; j++) {
                 serverDetailsOut.add(serverDetailsListIn.get(i));
             }
         }
-
-    return serverDetailsOut;
+        return serverDetailsOut;
     }
 
-    private int computeСoefficient(Weight maxWeight){
-        if (maxWeight.value < 100)
-            return 10;
-        else return 1;
+    private int computeСoefficient(Weight maxWeight) {
+        return 1;
     }
 
     static int gcd(int a, int b) {
