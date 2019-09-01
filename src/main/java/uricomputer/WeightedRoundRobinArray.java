@@ -37,8 +37,8 @@ public class WeightedRoundRobinArray implements UriComputer {
         URI server9Uri = new URI("0.0.0.9");
         URI server10Uri = new URI("0.0.0.10");
         List<ServerDetails> serverDetails = asList(
-                new ServerDetails(new Weight(1.8), server1Uri)
-                , new ServerDetails(new Weight(2.9), server2Uri)
+                new ServerDetails(new Weight(1.09), server1Uri)
+                , new ServerDetails(new Weight(1.99), server2Uri)
 //                , new ServerDetails(new Weight(3.0), server3Uri)
 //                , new ServerDetails(new Weight(4.0), server4Uri)
 //                , new ServerDetails(new Weight(5.0), server5Uri)
@@ -205,11 +205,11 @@ public class WeightedRoundRobinArray implements UriComputer {
         int maxPrecision = 1;
         for (Weight weight: weights){
             int curPrecision = new BigDecimal(Double.valueOf(weight.value).toString()).scale();
-            if (curPrecision >= maxPrecision)    {
-                maxPrecision = curPrecision > precisionLimit ? precisionLimit : (int) Math.pow(10, curPrecision);
+            if (Math.pow(10, curPrecision) >= Math.pow(10, curPrecision))    {
+                maxPrecision = curPrecision > precisionLimit ? precisionLimit :  curPrecision;
             }
         }
-        return maxPrecision;
+        return (int) Math.pow(10, maxPrecision);
     }
 
     static int gcd(int a, int b) {
