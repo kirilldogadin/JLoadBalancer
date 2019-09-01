@@ -43,8 +43,8 @@ public class WeightedRoundRobinArray implements UriComputer {
                 , new ServerDetails(new Weight(6.0), server6Uri)
                 , new ServerDetails(new Weight(7.0), server7Uri)
                 , new ServerDetails(new Weight(8.0), server8Uri)
-                , new ServerDetails(new Weight(9.0), server9Uri)
-                , new ServerDetails(new Weight(10.0), server10Uri)
+                , new ServerDetails(new Weight(9.0), server10Uri)
+                , new ServerDetails(new Weight(10.0), server9Uri)
         );
 
         int commonCount = 0;
@@ -62,6 +62,9 @@ public class WeightedRoundRobinArray implements UriComputer {
         WeightedRoundRobinArray weightedRoundRobin = new WeightedRoundRobinArray(serverDetails);
 
         //тест
+        long start = System.nanoTime();
+// поиск смысла жизни ...
+
         for (; commonCount < 1_000_000; commonCount++) {
             ServerDetails nextServer = weightedRoundRobin.getNextServer();
             if (nextServer.address.equals(server1Uri))
@@ -97,6 +100,10 @@ public class WeightedRoundRobinArray implements UriComputer {
                 + "\n server9 " + (double) server9Count / (double) commonCount
                 + "\n server10 " + (double) server10Count / (double) commonCount
         );
+
+        long finish = System.nanoTime();
+        long timeConsumedMillis = finish - start;
+        System.out.println("Время выполнения" + timeConsumedMillis);
     }
 
     public ServerDetails getNextServer() {

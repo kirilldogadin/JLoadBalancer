@@ -18,6 +18,7 @@ public class WeightedRoundRobinDoubleInterval implements UriComputer{
     private final Map<Weight, List<ServerDetails>> serversByWeight;
     private final ThreadLocalRandom random;
     private final List<Weight> weights;
+    private final List<Double> intervals;
     private final double sumOfWeights;
     private final Weight maxWeight;
 
@@ -60,6 +61,8 @@ public class WeightedRoundRobinDoubleInterval implements UriComputer{
         WeightedRoundRobinDoubleInterval weightedRoundRobinDoubleInterval = new WeightedRoundRobinDoubleInterval(serverDetails);
 
         //тест
+        long start = System.nanoTime();
+
         for (; commonCount < 1_000_000; commonCount++) {
             ServerDetails nextServer = weightedRoundRobinDoubleInterval.getNextServer();
             if (nextServer.address.equals(server1Uri))
@@ -95,12 +98,16 @@ public class WeightedRoundRobinDoubleInterval implements UriComputer{
                 + "\n server9 " + (double) server9Count / (double) commonCount
                 + "\n server10 " + (double) server10Count / (double) commonCount
         );
+
+        long finish = System.nanoTime();
+        long timeConsumedMillis = finish - start;
+        System.out.println("Время выполнения" + timeConsumedMillis);
     }
 
     public ServerDetails getNextServer() {
         //1.Рендомное число (равновероятное) где верхнее значение округлено до суммы весов(например 16)
         double randNumb = random.nextDouble((sumOfWeights));
-        Weight nearWeight = nearWeight(randNumb, weights, maxWeight);
+        Weight nearWeight = nearWeight(randNumb, weights, intervals, maxWeight);
         return extractWeight(nearWeight, randNumb);
     }
 
@@ -143,6 +150,7 @@ public class WeightedRoundRobinDoubleInterval implements UriComputer{
         weights.sort(Weight::compareTo);
         maxWeight = weights.get(weights.size() - 1);
         sumOfWeights = computeSumOfWeights(weights);
+        intervals = computeIntervals(weights);
     }
 
     private double computeSumOfWeights(List<Weight> weights) {
@@ -157,20 +165,34 @@ public class WeightedRoundRobinDoubleInterval implements UriComputer{
      * Вернет вес для случайного числа
      *
      * @param random    должен быть от 0 до sum весов
-     * @param weights   упорядочен от меньшего к большему!
+     * @param weights   упорядочен от меньшего к большему
+     * @param intervals список интервалов для весов
      * @param maxWeight макс вес
      * @return вероятный вес согласно весам
      */
-    private Weight nearWeight(double random, List<Weight> weights, Weight maxWeight) {
+    private Weight nearWeight(double random, List<Weight> weights, List<Double> intervals, Weight maxWeight) {
         checkRandomArg(random);
-        double sum = 0; // сумма длин предыдущих отрезков вместе с текущим - конец текущего
-        for (int i = 0; i < weights.size()-1; i++) {
-            sum += weights.get(i).value;
-            if (random < (sum)) {
+        for (int i = 0; i < weights.size(); i++) {
+            if (random < (intervals.get(i))) {
                 return weights.get(i);
             }
         }
         return maxWeight;
+    }
+
+    /**
+     * хранит верхнюю границу интервала для значения
+     * @param weights
+     * @return
+     */
+    private List<Double> computeIntervals(List<Weight> weights){
+        ArrayList<Double> intervals = new ArrayList<>();
+        double sum = 0;
+        for (Weight weight: weights){
+            sum += weight.value;
+            intervals.add(sum);
+        }
+        return intervals;
     }
 
     private void checkRandomArg(double random) {
