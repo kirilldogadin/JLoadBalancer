@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -16,7 +17,6 @@ import static java.util.Arrays.asList;
  * точность округлена до precisionLimit из-за реализации на основе массива
  */
 public class WeightedRoundRobinArray implements UriComputer {
-    private final Map<Weight, List<ServerDetails>> serversByWeight;
     private final ThreadLocalRandom random;
     private final List<Weight> weights;
     private final double sumOfWeights;
@@ -37,16 +37,16 @@ public class WeightedRoundRobinArray implements UriComputer {
         URI server9Uri = new URI("0.0.0.9");
         URI server10Uri = new URI("0.0.0.10");
         List<ServerDetails> serverDetails = asList(
-                new ServerDetails(new Weight(1.09), server1Uri)
-                , new ServerDetails(new Weight(1.99), server2Uri)
-//                , new ServerDetails(new Weight(3.0), server3Uri)
-//                , new ServerDetails(new Weight(4.0), server4Uri)
-//                , new ServerDetails(new Weight(5.0), server5Uri)
-//                , new ServerDetails(new Weight(6.0), server6Uri)
-//                , new ServerDetails(new Weight(7.0), server7Uri)
-//                , new ServerDetails(new Weight(8.0), server8Uri)
-//                , new ServerDetails(new Weight(9.0), server9Uri)
-//                , new ServerDetails(new Weight(10.0), server10Uri)
+                new ServerDetails(new Weight(10000500.000), server1Uri)
+                , new ServerDetails(new Weight(10000000.000), server2Uri)
+                , new ServerDetails(new Weight(10000500.000), server3Uri)
+                , new ServerDetails(new Weight(10000000.000), server4Uri)
+                , new ServerDetails(new Weight(10500000.000), server5Uri)
+                , new ServerDetails(new Weight(10000000.000), server6Uri)
+                , new ServerDetails(new Weight(10000000.000), server7Uri)
+                , new ServerDetails(new Weight(10000000.000), server8Uri)
+                , new ServerDetails(new Weight(10000000.000), server9Uri)
+                , new ServerDetails(new Weight(10005000.000), server10Uri)
         );
 
         int commonCount = 0;
@@ -113,21 +113,6 @@ public class WeightedRoundRobinArray implements UriComputer {
         return serverDetailsList.get(randNumb);
     }
 
-    /**
-     * если есть адреса с одинаковыми весами, то равновероятно между ними извлечь
-     *
-     * @param weight полученное ближайшее значене
-     * @param random случайно сгенерированное число
-     * @return любое из значений
-     */
-    private ServerDetails extractWeight(Weight weight, int random) {
-        List<ServerDetails> serverDetailsList = serversByWeight.get(weight);
-        if (serverDetailsList.size() == 1) {
-            return serverDetailsList.get(0);
-        }
-        return serverDetailsList.get(this.random.nextInt(serverDetailsList.size()));
-    }
-
     public URI getNextServerUri() {
         return getNextServer().address;
     }
@@ -135,19 +120,10 @@ public class WeightedRoundRobinArray implements UriComputer {
     public WeightedRoundRobinArray(List<ServerDetails> serverDetailsList, int precisionLimit) {
         this.precisionLimit = precisionLimit;
         random = ThreadLocalRandom.current(); //для генерации числа в нужно диапазоне
-        serversByWeight = new HashMap<>();
         weights = new ArrayList<>();
+        serverDetailsList = optimizeValueCount(serverDetailsList);
 
         serverDetailsList.forEach(serverDetails -> {
-            serversByWeight.computeIfPresent(serverDetails.weight, (weight, sdList) -> { // если значение есть добавиь в список
-                sdList.add(serverDetails);
-                return sdList;
-            });
-            serversByWeight.computeIfAbsent(serverDetails.weight, weight -> { // если значения нет создать список
-                ArrayList<ServerDetails> sdList = new ArrayList<>();
-                sdList.add(serverDetails);
-                return sdList;
-            });
             weights.add(serverDetails.weight);
         });
         weights.sort(Weight::compareTo);
@@ -168,7 +144,7 @@ public class WeightedRoundRobinArray implements UriComputer {
     private List<ServerDetails> initList(List<ServerDetails> serverDetailsListIn) {
         List<ServerDetails> serverDetailsOut = new ArrayList<>();
         int genGcd = 1;
-        optimizeValueCount(serverDetailsListIn);
+
         //заполняем массив
         for (ServerDetails serverDetails : serverDetailsListIn) {
             int addressValueCount = (int)(serverDetails.weight.value * weightСoefficient);
@@ -182,22 +158,27 @@ public class WeightedRoundRobinArray implements UriComputer {
     /**
      * оптмимизация кол-ва записией (общий множитель весов)
      * @param serverDetailsListIn
+     * @return
      */
-    private void optimizeValueCount(List<ServerDetails> serverDetailsListIn){
-//        for (int i = 0; i < serverDetailsListIn.size() - 2; i++) { // ищем общий множитель
-//            int curGcd = gcd(serverDetailsListIn.get(i).weight.value.intValue(),
-//                    serverDetailsListIn.get(i + 1).weight.value.intValue());
-//            if (curGcd > genGcd)
-//                genGcd = curGcd;
-//        }
+    private List<ServerDetails> optimizeValueCount(List<ServerDetails> serverDetailsListIn){
+        List<ServerDetails> optimizedServerDetailsList = serverDetailsListIn;
+        int genGcd = 1;
+        for (int i = 0; i < serverDetailsListIn.size() - 2; i++) { // ищем общий множитель
+            int curGcd = gcd(serverDetailsListIn.get(i).weight.value.intValue(),
+                    serverDetailsListIn.get(i + 1).weight.value.intValue());
+            if (curGcd > genGcd)
+                genGcd = curGcd;
+        }
 
-//        if (genGcd > 1){ // если есть общий множитель
-//            serverDetailsOut = serverDetailsOut.stream()
-//                    .map(serverDetails ->  new ServerDetails(
-//                            new Weight(serverDetails.weight.value / genGcd),
-//                            serverDetails.address))
-//                    .collect(Collectors.toList());
-//        }
+        if (genGcd > 1){ // если есть общий множитель
+            int finalGenGcd = genGcd;
+            optimizedServerDetailsList = serverDetailsListIn.stream()
+                    .map(serverDetails -> new ServerDetails(
+                            new Weight(serverDetails.weight.value / finalGenGcd),
+                            serverDetails.address))
+                    .collect(Collectors.toList());
+        }
+        return optimizedServerDetailsList;
     }
 
     private int computeСoefficient(List<Weight> weights, int precisionLimit) {
@@ -205,7 +186,7 @@ public class WeightedRoundRobinArray implements UriComputer {
         int maxPrecision = 1;
         for (Weight weight: weights){
             int curPrecision = new BigDecimal(Double.valueOf(weight.value).toString()).scale();
-            if (Math.pow(10, curPrecision) >= Math.pow(10, curPrecision))    {
+            if (Math.pow(10, curPrecision) > Math.pow(10, maxPrecision))    {
                 maxPrecision = curPrecision > precisionLimit ? precisionLimit :  curPrecision;
             }
         }
