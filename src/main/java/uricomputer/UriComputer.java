@@ -31,7 +31,7 @@ public interface UriComputer {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            WeightedRoundRobinDoubleInterval.ServerDetails that = (WeightedRoundRobinDoubleInterval.ServerDetails) o;
+            ServerDetails that = (ServerDetails) o;
             return weight.equals(that.weight) &&
                     address.equals(that.address);
         }
