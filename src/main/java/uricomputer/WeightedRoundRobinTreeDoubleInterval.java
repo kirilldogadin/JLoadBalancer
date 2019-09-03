@@ -34,15 +34,15 @@ public class WeightedRoundRobinTreeDoubleInterval implements UriComputer{
         URI server10Uri = new URI("0.0.0.10");
         List<ServerDetails> serverDetails = asList(
                 new ServerDetails(new Weight(0.010), server1Uri)
-                , new ServerDetails(new Weight(0.010), server2Uri)
-                , new ServerDetails(new Weight(0.010), server3Uri)
-                , new ServerDetails(new Weight(0.010), server4Uri)
-                , new ServerDetails(new Weight(0.010), server5Uri)
-                , new ServerDetails(new Weight(0.010), server6Uri)
-                , new ServerDetails(new Weight(0.010), server7Uri)
-                , new ServerDetails(new Weight(0.010), server8Uri)
-                , new ServerDetails(new Weight(0.010), server9Uri)
-                , new ServerDetails(new Weight(0.010), server10Uri)
+                , new ServerDetails(new Weight(0.020), server2Uri)
+                , new ServerDetails(new Weight(0.030), server3Uri)
+                , new ServerDetails(new Weight(0.040), server4Uri)
+                , new ServerDetails(new Weight(0.050), server5Uri)
+                , new ServerDetails(new Weight(0.060), server6Uri)
+                , new ServerDetails(new Weight(0.070), server7Uri)
+                , new ServerDetails(new Weight(0.080), server8Uri)
+                , new ServerDetails(new Weight(0.090), server9Uri)
+                , new ServerDetails(new Weight(0.100), server10Uri)
         );
 
         int commonCount = 0;
@@ -126,7 +126,7 @@ public class WeightedRoundRobinTreeDoubleInterval implements UriComputer{
     }
 
     public WeightedRoundRobinTreeDoubleInterval(List<ServerDetails> serverDetailsList) {
-        serverDetailsList.sort(Comparator.comparing(o -> o.weight));
+        Collections.sort(serverDetailsList,(Comparator.reverseOrder()));
         random = ThreadLocalRandom.current(); //для генерации числа в нужно диапазоне
         weights = initWeights(serverDetailsList);
         maxWeight = weights.get(weights.size() - 1);
@@ -174,7 +174,7 @@ public class WeightedRoundRobinTreeDoubleInterval implements UriComputer{
     /**
      * вычисляет массив который
      * хранит верхнюю границу интервала для каждого веса в массиве аргумента weigths
-     * @param weights веса упорядоченные от min to max
+     * @param weights веса упорядоченные from max to min
      * @return массив интервалов
      */
     private List<Double> computeIntervals(List<Weight> weights){
@@ -188,11 +188,10 @@ public class WeightedRoundRobinTreeDoubleInterval implements UriComputer{
     }
 
     private List<Weight> initWeights(List<ServerDetails> serverDetailsList) {
-        List<Weight> weights = serverDetailsList.stream()
+        return serverDetailsList.stream()
                 .map(serverDetails -> serverDetails.weight)
+                .sorted(Comparator.reverseOrder())
                 .collect(Collectors.toList());
-        weights.sort(Weight::compareTo);
-        return weights;
     }
 
     private void checkRandomArg(double random) {

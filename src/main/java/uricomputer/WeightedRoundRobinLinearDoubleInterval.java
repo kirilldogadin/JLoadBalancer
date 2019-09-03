@@ -130,6 +130,7 @@ public class WeightedRoundRobinLinearDoubleInterval implements UriComputer{
     }
 
     public WeightedRoundRobinLinearDoubleInterval(List<ServerDetails> serverDetailsList) {
+        serverDetailsList.sort(Comparator.reverseOrder());
         random = ThreadLocalRandom.current(); //для генерации числа в нужно диапазоне
         serversByWeight = initServersByWeight(serverDetailsList);
         weights = initWeights(serverDetailsList);
@@ -140,11 +141,10 @@ public class WeightedRoundRobinLinearDoubleInterval implements UriComputer{
     }
 
     private List<Weight> initWeights(List<ServerDetails> serverDetailsList) {
-        List<Weight> weights = serverDetailsList.stream()
+        return serverDetailsList.stream()
                 .map(serverDetails -> serverDetails.weight)
+                .sorted(Comparator.reverseOrder())
                 .collect(Collectors.toList());
-        weights.sort(Weight::compareTo);
-        return weights;
     }
 
     private Map<Weight, List<ServerDetails>> initServersByWeight(List<ServerDetails> serverDetailsList) {
@@ -175,7 +175,7 @@ public class WeightedRoundRobinLinearDoubleInterval implements UriComputer{
      * Вернет вес для случайного числа
      *
      * @param random    должен быть от 0 до sum весов
-     * @param weights   упорядочен от меньшего к большему
+     * @param weights   упорядочен from max to min
      * @param intervals список интервалов для весов
      * @param maxWeight макс вес
      * @return вероятный вес согласно весам
@@ -193,7 +193,7 @@ public class WeightedRoundRobinLinearDoubleInterval implements UriComputer{
     /**
      * вычисляет массив который
      * хранит верхнюю границу интервала для каждого веса в массиве аргумента weigths
-     * @param weights веса упорядоченные от min to max
+     * @param weights веса упорядоченные from max to min
      * @return массив интервалов
      */
     private List<Double> computeIntervals(List<Weight> weights){
